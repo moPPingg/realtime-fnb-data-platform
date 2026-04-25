@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2
+faker
+kafka-python
+pyspark
+colorama
+python-dotenv

@@ -1,0 +1,49 @@
+F&B Real-time Data Platform - Project Blueprint
+1. Project Overview
+Build a real-time data pipeline for a fictional F&B system to process customer transactions and generate insights.
+Goal: simulate production-level Data Engineering system using Kafka, Spark, PostgreSQL, MongoDB, Airflow.
+2. Business Use Case
+Customer makes a purchase → system updates metrics instantly → dashboard reflects changes.
+Use cases:
+- Real-time revenue tracking
+- Customer segmentation (VIP detection)
+- Behavior analytics
+3. Architecture Flow
+Data Source → Kafka → Spark Streaming → Storage → API/Dashboard
+Each component works together to simulate a real-time data system.
+4. Tech Stack Explanation
+Kafka: streaming ingestion
+Spark: real-time processing
+PostgreSQL: structured storage
+MongoDB: raw JSON logs
+Airflow: orchestration
+Docker: environment setup
+5. Folder Structure
+Refer to modular architecture:
+- ingestion/
+- streaming/
+- storage/
+- orchestration/
+- api/
+- configs/
+- docker/
+6. Implementation Roadmap
+Week 1:
+- Setup Docker
+- Kafka producer
+Week 2:
+- Spark streaming job
+- Store into PostgreSQL
+Week 3:
+- API + Dashboard
+- Airflow integration
+7. Team Task Distribution
+Member 1: Data ingestion + Kafka
+Member 2: Spark processing
+Member 3: Storage + API + Dashboard
+8. Advanced Improvements
+- Add monitoring (Prometheus)
+- Add dbt
+- Add ML recommendation system
+9. CV Description
+Built a real-time data pipeline using Kafka and Spark Streaming to process transaction data and serve insights via API and dashboard.
