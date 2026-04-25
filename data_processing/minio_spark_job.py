@@ -110,9 +110,9 @@ def run_pipeline():
     # -------------------------------------------------------------------------
     print("[INFO] Pushing ML Features to PostgreSQL Serving Layer...")
     
-    DB_URL = "jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+    DB_URL = "jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
     DB_PROPERTIES = {
-        "user": "postgres.ifwpejmuodpouurbclys",
+        "user": "postgres.bgicsxftnryxyrfbvprt",
         "password": "thienkhoi5@", # Password will be securely managed in production
         "driver": "org.postgresql.Driver"
     }

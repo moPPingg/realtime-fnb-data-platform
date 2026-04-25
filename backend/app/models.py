@@ -66,4 +66,4 @@ class InventoryCurrent(Base):
     branch_id = Column(Integer)
     product_id = Column(Integer)
     stock_level = Column(Integer)
-    last_updated = Column(DateTime)
+    updated_at = Column(DateTime)

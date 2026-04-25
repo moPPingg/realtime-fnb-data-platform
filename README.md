@@ -42,9 +42,11 @@ This is a **Production-Grade Data Engineering Ecosystem** for a Food & Beverage 
 │   ├── kafka_producer.py               # Edge-node POS Simulator
 │   └── spark_streaming_consumer.py     # Micro-batch Stream Processor
 ├── frontend/                           # React + Vite Dashboard
-├── supabase_enterprise_schema.sql      # Core OLTP & OLAP Schemas
-├── supabase_olap_upgrades.sql          # Advanced Analytics Views & DQ Engine
-├── supabase_auth_employees.sql         # RBAC Auth Triggers
+├── database/                           # PostgreSQL / Supabase Scripts
+│   ├── supabase_enterprise_schema.sql  # Core OLTP & OLAP Schemas
+│   ├── supabase_olap_upgrades.sql      # Advanced Analytics Views & DQ Engine
+│   ├── supabase_auth_employees.sql     # RBAC Auth Triggers
+│   └── supabase_ml_features.sql        # ML Feature Store Schema
 └── docker-compose.yml                  # Kafka, Zookeeper, MinIO
 ```
 

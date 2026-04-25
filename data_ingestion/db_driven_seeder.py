@@ -16,7 +16,7 @@ import os
 init(autoreset=True)
 
 # Supabase connection using the Pooler for IPv4
-DB_URL = "postgresql://postgres.ifwpejmuodpouurbclys:thienkhoi5%40@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+DB_URL = "postgresql://postgres.bgicsxftnryxyrfbvprt:thienkhoi5%40@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 
 def execute_setup_sql(conn):
     """Executes the SQL file to ensure schema & procedures exist."""
@@ -85,7 +85,7 @@ def seed_history(conn):
     print(Style.DIM + "This relies entirely on PostgreSQL CTEs, Temp Tables, and Normal Distributions...")
     
     # Calls SQL Function: seed_historical_orders_bulk(start_date, end_date, base_orders_per_day)
-    cur.execute("SELECT seed_historical_orders_bulk((CURRENT_DATE - 30)::DATE, CURRENT_DATE::DATE, 400)")
+    cur.execute("SELECT seed_historical_orders_bulk((CURRENT_DATE - 30)::DATE, CURRENT_DATE::DATE, 50)")
     conn.commit()
     print(Fore.GREEN + "[SUCCESS] Historical seeding complete!")
 

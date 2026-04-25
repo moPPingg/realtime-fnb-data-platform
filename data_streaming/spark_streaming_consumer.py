@@ -11,9 +11,9 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Supabase Connection details for the Sink
-DB_URL = "jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+DB_URL = "jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 DB_PROPERTIES = {
-    "user": "postgres.ifwpejmuodpouurbclys",
+    "user": "postgres.bgicsxftnryxyrfbvprt",
     "password": "thienkhoi5@", 
     "driver": "org.postgresql.Driver"
 }

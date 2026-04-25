@@ -3,9 +3,9 @@ from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, TimestampType
 
 # Supabase PostgreSQL credentials (using Pooler for IPv4 compatibility)
-DB_URL = "jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+DB_URL = "jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 DB_PROPERTIES = {
-    "user": "postgres.ifwpejmuodpouurbclys",
+    "user": "postgres.bgicsxftnryxyrfbvprt",
     "password": "thienkhoi5@",
     "driver": "org.postgresql.Driver"
 }
