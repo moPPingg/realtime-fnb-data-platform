@@ -1,8 +1,8 @@
-# F&B Real-Time Data Platform 🚀
+# F&B Real-Time Data Platform 
 
 This is a **Production-Grade Data Engineering Ecosystem** for a Food & Beverage (F&B) chain. It seamlessly integrates Real-Time Transaction Processing (OLTP), High-Speed Analytics (OLAP), Data Lakes, and Machine Learning pipelines into a unified platform.
 
-## 🌟 Core Architecture & Features
+## Core Architecture & Features
 
 ### 1. Database-First Design (Supabase / PostgreSQL)
 *   **OLTP (Online Transaction Processing)**: A strictly normalized (3NF) relational schema (`oltp.orders`, `oltp.branches`, `oltp.products`). Includes advanced triggers for 100% automated inventory tracking (`oltp.inventory_logs`).
@@ -23,7 +23,7 @@ This is a **Production-Grade Data Engineering Ecosystem** for a Food & Beverage 
 
 ---
 
-## 🛠️ Project Structure
+## Project Structure
 
 ```text
 .
@@ -48,7 +48,7 @@ This is a **Production-Grade Data Engineering Ecosystem** for a Food & Beverage 
 └── docker-compose.yml                  # Kafka, Zookeeper, MinIO
 ```
 
-## 🚀 How to Run
+## How to Run
 
 ### 1. Database Setup
 Ensure you have a Supabase project. The `data_ingestion/db_driven_seeder.py` script will automatically drop and recreate the optimal Database structure and populate it with 30 days of historical data.

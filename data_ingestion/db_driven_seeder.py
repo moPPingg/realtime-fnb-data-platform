@@ -21,8 +21,8 @@ DB_URL = "postgresql://postgres.ifwpejmuodpouurbclys:thienkhoi5%40@aws-1-ap-sout
 def execute_setup_sql(conn):
     """Executes the SQL file to ensure schema & procedures exist."""
     print("Checking database schema and applying SQL...")
-    sql_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "supabase_enterprise_schema.sql")
-    upgrade_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "supabase_olap_upgrades.sql")
+    sql_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_enterprise_schema.sql")
+    upgrade_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_olap_upgrades.sql")
     try:
         with conn.cursor() as cur:
             with open(sql_path, "r", encoding="utf-8") as f:
