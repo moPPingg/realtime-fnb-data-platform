@@ -1,0 +1,14 @@
+FROM bitnami/spark:3.3.4
+
+USER root
+
+# Install Python dependencies
+COPY requirements.txt /opt/bitnami/spark/requirements.txt
+RUN pip install --no-cache-dir -r /opt/bitnami/spark/requirements.txt
+
+# Copy source code
+COPY data_streaming/ /opt/bitnami/spark/data_streaming/
+COPY database/ /opt/bitnami/spark/database/
+WORKDIR /opt/bitnami/spark
+
+USER 1001

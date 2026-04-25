@@ -8,9 +8,12 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 # Consumes Kafka topic, performs micro-batch analytics, and pushes to Postgres
 # =============================================================================
 
+import os
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Supabase Connection details for the Sink
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 DB_URL = "jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 DB_PROPERTIES = {
     "user": "postgres.bgicsxftnryxyrfbvprt",
@@ -75,7 +78,7 @@ def start_streaming():
     # 1. READ from Kafka Topic
     kafka_df = spark.readStream \
         .format("kafka") \
-        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("kafka.bootstrap.servers", KAFKA_BROKER) \
         .option("subscribe", "pos_transactions") \
         .option("startingOffsets", "latest") \
         .option("failOnDataLoss", "false") \

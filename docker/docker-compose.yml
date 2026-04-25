@@ -51,5 +51,26 @@ services:
       exit 0;
       "
 
+  kafka-producer:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile.streaming
+    command: python data_streaming/kafka_producer.py
+    environment:
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - kafka
+
+  spark-consumer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.streaming
+    command: python data_streaming/spark_streaming_consumer.py
+    environment:
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - kafka
+      - kafka-producer
+
 volumes:
   minio_data:

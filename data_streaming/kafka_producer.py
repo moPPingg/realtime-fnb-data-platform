@@ -11,9 +11,11 @@ from datetime import datetime
 # Simulates edge-node Point of Sale (POS) machines pushing events to Kafka
 # =============================================================================
 
+import os
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-KAFKA_BROKER = "localhost:9092"
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 TOPIC_NAME = "pos_transactions"
 
 def get_producer():
