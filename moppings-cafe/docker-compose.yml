@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: moppings_db
+    restart: always
+    environment:
+      POSTGRES_DB: moppings_cafe
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - moppings_db_data:/var/lib/postgresql/data
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  server:
+    build: ./server
+    container_name: moppings_server
+    restart: always
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/moppings_cafe
+      JWT_SECRET: moppings_super_secret_key_change_in_prod
+      JWT_EXPIRES_IN: 8h
+      CLIENT_ORIGIN: http://localhost:5173
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+
+  client:
+    build: ./client
+    container_name: moppings_client
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    depends_on:
+      - server
+
+volumes:
+  moppings_db_data:
