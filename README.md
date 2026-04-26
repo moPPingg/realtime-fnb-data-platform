@@ -47,32 +47,62 @@ This is a **Production-Grade Data Engineering Ecosystem** for a Food & Beverage 
 │   ├── supabase_olap_upgrades.sql      # Advanced Analytics Views & DQ Engine
 │   ├── supabase_auth_employees.sql     # RBAC Auth Triggers
 │   └── supabase_ml_features.sql        # ML Feature Store Schema
-└── docker-compose.yml                  # Kafka, Zookeeper, MinIO
+└── docker/                             # Infrastructure (Kafka, Zookeeper, MinIO, Spark)
 ```
 
 ## How to Run
 
-### 1. Database Setup
-Ensure you have a Supabase project. The `data_ingestion/db_driven_seeder.py` script will automatically drop and recreate the optimal Database structure and populate it with 30 days of historical data.
+### 1. Prerequisites & Environment
+Ensure you have a Supabase project and a `.env` file in the root directory with the following variables:
+- `SUPABASE_DB_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_URL`
+- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`
+
+### 2. Infrastructure Setup (Docker)
+Since **Apache Spark and Kafka** have complex dependencies on Windows, the entire streaming and batch processing stack is containerized.
 ```bash
+# Start Kafka, Zookeeper, MinIO, and Spark Workers
+cd docker
+docker-compose up -d
+```
+This will start:
+- **Kafka & Zookeeper**: For real-time event streaming.
+- **MinIO**: As a local S3-compatible Data Lake.
+- **Spark Consumer**: Automatically starts processing Kafka streams.
+
+### 3. Database Initialization
+Run the seeder to install the OLTP/OLAP schemas and populate historical data:
+```bash
+# Activate virtual environment
+.\venv\Scripts\activate
+
+# Install requirements
+pip install -r requirements.txt
+
+# Run seeder
 python data_ingestion/db_driven_seeder.py
 ```
 
-### 2. Start the Backend API
+### 4. Start the Backend API (FastAPI)
+The backend provides the analytics engine for the dashboard.
 ```bash
-uvicorn backend.app.main:app --reload
+cd backend
+# Ensure venv is active
+uvicorn app.main:app --reload
 ```
 
-### 3. Start the Frontend Dashboard
+### 5. Start the Frontend Dashboard (React)
+A real-time dashboard with Recharts and Supabase Realtime integration.
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### 4. (Optional) Run Real-Time Streaming
-Start your Docker containers (Kafka, MinIO), then start the POS Producer and Spark Consumer:
-```bash
-python data_streaming/kafka_producer.py
-python data_streaming/spark_streaming_consumer.py
-```
+---
+
+## Dashboard Features
+The new **Production Dashboard** includes:
+- **Real-time KPI Cards**: Revenue, Orders, and AOV updated via WebSockets.
+- **Business Insights**: Automatic detection of peak hours and revenue anomalies.
+- **Inventory Alerts**: Real-time tracking of low-stock items with severity levels.
+- **Multi-Branch View**: Role-based access for Managers to compare performance across all branches.

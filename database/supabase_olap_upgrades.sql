@@ -122,6 +122,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- NOTE: After running olap.refresh_star_schema() the OLAP tables will be rebuilt.
+-- Call this manually after bulk seeding: SELECT olap.refresh_star_schema();
+-- Do NOT call inside trigger_realtime_order() — that runs every second.
+
 -- 4. ADVANCED ANALYTICS VIEWS
 
 -- Revenue by hour (Peak detection)

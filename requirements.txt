@@ -1,9 +1,9 @@
 fastapi
 uvicorn
 sqlalchemy
-psycopg2
+psycopg2-binary
 faker
 kafka-python
-pyspark
+pyspark==3.5.1
 colorama
 python-dotenv

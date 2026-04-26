@@ -1,14 +1,20 @@
-FROM bitnami/spark:3.3.4
+FROM python:3.12-slim
 
 USER root
 
+# Install Java (required for PySpark)
+RUN apt-get update && apt-get install -y default-jre procps && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
-COPY requirements.txt /opt/bitnami/spark/requirements.txt
-RUN pip install --no-cache-dir -r /opt/bitnami/spark/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --upgrade pip && pip install --default-timeout=100 --no-cache-dir -r /app/requirements.txt
 
 # Copy source code
-COPY data_streaming/ /opt/bitnami/spark/data_streaming/
-COPY database/ /opt/bitnami/spark/database/
-WORKDIR /opt/bitnami/spark
+COPY data_streaming/ /app/data_streaming/
+COPY data_processing/ /app/data_processing/
+COPY database/ /app/database/
+WORKDIR /app
 
-USER 1001
+# Setup non-root user
+RUN useradd -m sparkuser && chown -R sparkuser:sparkuser /app
+USER sparkuser

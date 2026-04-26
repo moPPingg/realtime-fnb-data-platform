@@ -11,23 +11,30 @@ import psycopg2
 import random
 from faker import Faker
 from colorama import Fore, Style, init
+from dotenv import load_dotenv
 import os
 
 init(autoreset=True)
+load_dotenv()
 
-# Supabase connection using the Pooler for IPv4
-DB_URL = "postgresql://postgres.bgicsxftnryxyrfbvprt:thienkhoi5%40@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
+# Supabase connection using the Pooler for IPv4 from .env
+DB_URL = os.getenv("SUPABASE_DB_URL")
 
 def execute_setup_sql(conn):
     """Executes the SQL file to ensure schema & procedures exist."""
     print("Checking database schema and applying SQL...")
-    sql_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_enterprise_schema.sql")
+    # ✅ FIX: Only run supabase_enterprise_schema.sql.
+    # supabase_advanced_schema.sql is a deprecated duplicate and has been removed from this run.
+    sql_path     = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_enterprise_schema.sql")
     upgrade_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_olap_upgrades.sql")
+    auth_path    = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "supabase_auth_employees.sql")
     try:
         with conn.cursor() as cur:
             with open(sql_path, "r", encoding="utf-8") as f:
                 cur.execute(f.read())
             with open(upgrade_path, "r", encoding="utf-8") as f:
+                cur.execute(f.read())
+            with open(auth_path, "r", encoding="utf-8") as f:
                 cur.execute(f.read())
             conn.commit()
             print(Fore.GREEN + "[SUCCESS] Advanced Schema and Procedures applied successfully!")
@@ -88,6 +95,13 @@ def seed_history(conn):
     cur.execute("SELECT seed_historical_orders_bulk((CURRENT_DATE - 30)::DATE, CURRENT_DATE::DATE, 50)")
     conn.commit()
     print(Fore.GREEN + "[SUCCESS] Historical seeding complete!")
+
+    # ✅ FIX: Refresh OLAP star schema AFTER bulk seeding is done (not inside the seeder).
+    # This avoids TRUNCATE + rebuild happening on every single realtime order.
+    print(Fore.CYAN + "[INFO] Refreshing OLAP Star Schema...")
+    cur.execute("SELECT olap.refresh_star_schema()")
+    conn.commit()
+    print(Fore.GREEN + "[SUCCESS] OLAP Star Schema refreshed!")
 
 
 def simulate_realtime(conn):

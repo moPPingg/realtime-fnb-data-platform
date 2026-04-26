@@ -305,17 +305,88 @@ BEGIN
     SELECT count(*) INTO v_total_orders FROM tmp_inserted_orders;
     INSERT INTO oltp.audit_logs (event_type, description, records_affected) VALUES ('BULK_SEED', 'Generated historical orders.', v_total_orders);
     
-    -- Refresh the Star Schema automatically!
-    PERFORM olap.refresh_star_schema();
+    -- ✅ FIX: refresh_star_schema() is intentionally NOT called here.
+    -- Call olap.refresh_star_schema() manually after bulk seeding is done.
+    -- Calling it inside trigger_realtime_order() would TRUNCATE fact_sales every second.
 END;
 $$ LANGUAGE plpgsql;
 
+-- ✅ FIX: trigger_realtime_order now inserts a single order directly.
+-- It no longer calls seed_historical_orders_bulk() to avoid full OLAP rebuilds.
 CREATE OR REPLACE FUNCTION oltp.trigger_realtime_order() RETURNS INT AS $$
 DECLARE
-    v_order_id INT;
+    v_order_id    INT;
+    v_branch_id   INT;
+    v_product_id  INT;
+    v_quantity    INT;
+    v_unit_price  NUMERIC(10,2);
+    v_gross       NUMERIC(10,2);
 BEGIN
-    PERFORM oltp.seed_historical_orders_bulk(CURRENT_DATE, CURRENT_DATE, 1);
-    SELECT MAX(id) INTO v_order_id FROM oltp.orders;
+    -- Pick a weighted random branch
+    SELECT id INTO v_branch_id FROM oltp.branches ORDER BY -LOG(RANDOM() + 0.000001) / traffic_weight LIMIT 1;
+    -- Pick a weighted random product
+    SELECT id, base_price INTO v_product_id, v_unit_price FROM oltp.products ORDER BY -LOG(RANDOM() + 0.000001) / popularity_weight LIMIT 1;
+    v_quantity := floor(random() * 3 + 1)::INT;
+    v_gross    := v_unit_price * v_quantity;
+
+    -- Insert order
+    INSERT INTO oltp.orders (branch_id, gross_amount, discount_amount, created_at)
+    VALUES (v_branch_id, v_gross, 0, NOW())
+    RETURNING id INTO v_order_id;
+
+    -- Insert order item
+    INSERT INTO oltp.order_items (order_id, product_id, quantity, unit_price)
+    VALUES (v_order_id, v_product_id, v_quantity, v_unit_price);
+
+    -- Decrement inventory
+    UPDATE oltp.inventory_current
+    SET stock_level = stock_level - v_quantity
+    WHERE branch_id = v_branch_id AND product_id = v_product_id;
+
     RETURN v_order_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =========================================================
+-- KAFKA STAGING TABLE + TRIGGER
+-- Spark streaming consumer writes raw events here.
+-- This trigger normalizes them into oltp.orders + oltp.order_items.
+-- =========================================================
+CREATE TABLE IF NOT EXISTS oltp.raw_kafka_transactions (
+    id             SERIAL PRIMARY KEY,
+    transaction_id VARCHAR(255) UNIQUE NOT NULL,
+    branch_id      INT  NOT NULL,
+    product_id     INT  NOT NULL,
+    quantity       INT  NOT NULL,
+    unit_price     NUMERIC(10,2) NOT NULL,
+    event_ts       TIMESTAMP NOT NULL DEFAULT NOW(),
+    processed      BOOLEAN   NOT NULL DEFAULT FALSE
+);
+
+CREATE OR REPLACE FUNCTION oltp.process_kafka_transaction() RETURNS TRIGGER AS $$
+DECLARE
+    v_order_id INT;
+    v_gross    NUMERIC(10,2);
+BEGIN
+    v_gross := NEW.unit_price * NEW.quantity;
+
+    INSERT INTO oltp.orders (branch_id, gross_amount, discount_amount, created_at)
+    VALUES (NEW.branch_id, v_gross, 0, NEW.event_ts)
+    RETURNING id INTO v_order_id;
+
+    INSERT INTO oltp.order_items (order_id, product_id, quantity, unit_price)
+    VALUES (v_order_id, NEW.product_id, NEW.quantity, NEW.unit_price);
+
+    UPDATE oltp.inventory_current
+    SET stock_level = stock_level - NEW.quantity
+    WHERE branch_id = NEW.branch_id AND product_id = NEW.product_id;
+
+    NEW.processed := TRUE;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_process_kafka_txn ON oltp.raw_kafka_transactions;
+CREATE TRIGGER trg_process_kafka_txn
+BEFORE INSERT ON oltp.raw_kafka_transactions
+FOR EACH ROW EXECUTE FUNCTION oltp.process_kafka_transaction();
