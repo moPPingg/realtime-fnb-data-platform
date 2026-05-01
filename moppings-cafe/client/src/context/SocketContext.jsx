@@ -10,7 +10,20 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000');
+      const token = localStorage.getItem('moppings_token');
+      const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+      });
+
+      newSocket.on('connect', () => {
+        console.log('[WS] Connected:', newSocket.id);
+      });
+
+      newSocket.on('connect_error', (err) => {
+        console.error('[WS] Connection error:', err.message);
+      });
+
       setSocket(newSocket);
 
       return () => newSocket.close();

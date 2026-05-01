@@ -9,10 +9,16 @@ app = FastAPI(title="F&B Internal Dashboard API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"DEBUG: Incoming request to {request.url.path}")
+    response = await call_next(request)
+    return response
 
 # ─────────────────────────────────────────────────────
 # KPI CARDS
@@ -159,26 +165,25 @@ def get_branch_performance(db: Session = Depends(database.get_db)):
 # ─────────────────────────────────────────────────────
 
 @app.get("/api/dashboard/low-stock")
-def get_low_stock(threshold: int = 20, branch_id: int = None, db: Session = Depends(database.get_db)):
-    branch_filter = "AND ic.branch_id = :bid" if branch_id else ""
-    params = {"threshold": threshold}
-    if branch_id:
-        params["bid"] = branch_id
+def get_low_stock(branch_id: int = None, db: Session = Depends(database.get_db)):
+    branch_filter = "AND branch_id = :bid" if branch_id else ""
     sql = f"""
-        SELECT p.name, p.category, b.name AS branch_name, ic.stock_level
-        FROM oltp.inventory_current ic
-        JOIN oltp.products p ON p.id = ic.product_id
-        JOIN oltp.branches b ON b.id = ic.branch_id
-        WHERE ic.stock_level < :threshold {branch_filter}
-        ORDER BY ic.stock_level ASC
+        SELECT product_name, ingredient_type, COALESCE(stock_quantity, 0), unit, COALESCE(reorder_level, 0), expiry_date, batch_number
+        FROM oltp.inventory
+        WHERE (COALESCE(stock_quantity, 0) <= COALESCE(reorder_level, 0) OR (expiry_date IS NOT NULL AND expiry_date <= CURRENT_DATE + INTERVAL '7 days')) {branch_filter}
+        ORDER BY expiry_date ASC, stock_quantity ASC
     """
+    params = {"bid": branch_id} if branch_id else {}
     rows = db.execute(text(sql), params).fetchall()
     return [{
         "product": r[0],
         "category": r[1],
-        "branch": r[2],
-        "stock": r[3],
-        "severity": "critical" if r[3] <= 5 else "warning"
+        "stock": float(r[2]),
+        "unit": r[3],
+        "reorder_level": float(r[4]),
+        "expiry_date": str(r[5]) if r[5] else None,
+        "batch": r[6],
+        "severity": "critical" if float(r[2]) <= (float(r[4]) * 0.5) or (r[5] and r[5] <= date.today()) else "warning"
     } for r in rows]
 
 
@@ -211,14 +216,12 @@ def get_insights(db: Session = Depends(database.get_db)):
             if pct <= -15:
                 insights.append({
                     "type": "warning",
-                    "icon": "📉",
-                    "text": f"Branch {branch} revenue dropped {abs(pct):.1f}% compared to yesterday"
+                    "text": f"Branch {branch} revenue dropped {abs(pct):.1f}% so với hôm qua"
                 })
             elif pct >= 20:
                 insights.append({
                     "type": "success",
-                    "icon": "📈",
-                    "text": f"Branch {branch} revenue surged {pct:.1f}% compared to yesterday"
+                    "text": f"Branch {branch} revenue surged {pct:.1f}% so với hôm qua"
                 })
 
     # 2. Peak hours
@@ -230,7 +233,7 @@ def get_insights(db: Session = Depends(database.get_db)):
     """)).fetchall()
     if peak_row:
         hours = " and ".join([f"{r[0]:02d}:00" for r in peak_row])
-        insights.append({"type": "info", "icon": "⏰", "text": f"Peak hours today: {hours}"})
+        insights.append({"type": "info", "text": f"Peak hours today: {hours}"})
 
     # 3. Low stock count
     low_count = db.execute(text("""
@@ -239,7 +242,6 @@ def get_insights(db: Session = Depends(database.get_db)):
     if low_count and low_count > 0:
         insights.append({
             "type": "warning",
-            "icon": "⚠️",
             "text": f"{low_count} product(s) are running low on stock across all branches"
         })
 
@@ -252,9 +254,9 @@ def get_insights(db: Session = Depends(database.get_db)):
         GROUP BY dp.name ORDER BY units DESC LIMIT 1
     """)).fetchone()
     if best:
-        insights.append({"type": "info", "icon": "🏆", "text": f"Best seller today: {best[0]} ({best[1]} units)"})
+        insights.append({"type": "info", "text": f"Best seller today: {best[0]} ({best[1]} units)"})
 
-    return insights or [{"type": "info", "icon": "ℹ️", "text": "No data available for today yet"}]
+    return insights or [{"type": "info", "text": "No significant data insights for today."}]
 
 
 # ─────────────────────────────────────────────────────
@@ -263,8 +265,14 @@ def get_insights(db: Session = Depends(database.get_db)):
 
 @app.get("/api/branches")
 def get_branches(db: Session = Depends(database.get_db)):
-    results = db.query(models.Branch).all()
+    results = db.query(models.Branch).order_by(models.Branch.id).all()
     return [{"id": r.id, "name": r.name} for r in results]
+
+@app.get("/api/user/role")
+def get_user_role(email: str, db: Session = Depends(database.get_db)):
+    sql = text("SELECT role FROM oltp.employees WHERE email = :email")
+    role = db.execute(sql, {"email": email}).scalar()
+    return {"role": role or "STAFF"}
 
 @app.get("/api/system/data-quality")
 def run_data_quality_checks(db: Session = Depends(database.get_db)):

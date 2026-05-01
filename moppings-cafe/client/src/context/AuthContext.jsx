@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 
 const AuthContext = createContext(null);
@@ -42,18 +42,11 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const hasPermission = (perm) => {
-    // Note: User object from login includes basic role/info.
-    // For specific permissions, we check against what's loaded or role-based logic.
-    // Admin has everything.
+  const hasPermission = useCallback((perm) => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    
-    // For others, if we want dynamic permissions from server:
-    // We could store permissions in the user object or fetch them.
-    // Given the backend loads them into req.user, the client can also store them.
-    return user.permissions?.includes(perm);
-  };
+    return user.permissions?.includes(perm) ?? false;
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, hasPermission, loading }}>

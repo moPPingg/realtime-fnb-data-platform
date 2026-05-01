@@ -10,10 +10,12 @@ CREATE TABLE IF NOT EXISTS oltp.employees (
     role VARCHAR(50) NOT NULL CHECK (role IN ('STAFF', 'MANAGER')),
     branch_id INT REFERENCES oltp.branches(id),
     status VARCHAR(50) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    email VARCHAR(255) UNIQUE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_employees_updated_at ON oltp.employees;
 CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON oltp.employees FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 -- 2. Function to map Supabase Auth User to Employee on creation
@@ -21,13 +23,14 @@ CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON oltp.employees FOR EACH
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO oltp.employees (id, employee_code, name, role, branch_id)
+  INSERT INTO oltp.employees (id, employee_code, name, role, branch_id, email)
   VALUES (
     NEW.id,
-    NEW.raw_user_meta_data->>'employee_code',
-    NEW.raw_user_meta_data->>'name',
+    COALESCE(NEW.raw_user_meta_data->>'employee_code', 'EMP-' || substr(NEW.id::text, 1, 8)),
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
     COALESCE(NEW.raw_user_meta_data->>'role', 'STAFF'),
-    (NEW.raw_user_meta_data->>'branch_id')::INT
+    (NEW.raw_user_meta_data->>'branch_id')::INT,
+    NEW.email
   );
   RETURN NEW;
 END;
@@ -38,14 +41,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 3. Seed Initial Employees
-INSERT INTO oltp.employees (id, employee_code, name, role, branch_id)
-VALUES 
-    (gen_random_uuid(), 'MGR001', 'Alice Admin', 'MANAGER', NULL),
-    (gen_random_uuid(), 'STF001', 'Bob Staff', 'STAFF', 1),
-    (gen_random_uuid(), 'STF002', 'Charlie Staff', 'STAFF', 2)
-ON CONFLICT (employee_code) DO NOTHING;
 
 -- 4. Enable Supabase Realtime for Dashboard
 -- Ensures that the React frontend receives websocket updates

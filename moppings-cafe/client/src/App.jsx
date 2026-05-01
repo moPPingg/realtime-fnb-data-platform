@@ -2,15 +2,15 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ToastProvider } from './components/Toast';
 
-// Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Users from './pages/Users';
 import RolesPermissions from './pages/RolesPermissions';
+import TransactionHistory from './pages/TransactionHistory';
 
-// Components
 import Sidebar from './components/Layout/Sidebar';
 import Topbar from './components/Layout/Topbar';
 
@@ -42,9 +42,10 @@ function App() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <ToastProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
             
             <Route path="/dashboard" element={
               <ProtectedRoute permission="view_dashboard">
@@ -69,10 +70,17 @@ function App() {
                 <Layout><RolesPermissions /></Layout>
               </ProtectedRoute>
             } />
+
+            <Route path="/transactions" element={
+              <ProtectedRoute permission="view_dashboard">
+                <Layout><TransactionHistory /></Layout>
+              </ProtectedRoute>
+            } />
             
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Router>
+        </ToastProvider>
       </SocketProvider>
     </AuthProvider>
   );

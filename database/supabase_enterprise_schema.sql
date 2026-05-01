@@ -10,12 +10,14 @@ DROP TABLE IF EXISTS olap.fact_sales CASCADE;
 DROP TABLE IF EXISTS olap.dim_time CASCADE;
 DROP TABLE IF EXISTS olap.dim_branch CASCADE;
 DROP TABLE IF EXISTS olap.dim_product CASCADE;
+DROP TABLE IF EXISTS oltp.inventory CASCADE;
 DROP TABLE IF EXISTS oltp.inventory_logs CASCADE;
 DROP TABLE IF EXISTS oltp.audit_logs CASCADE;
 DROP TABLE IF EXISTS oltp.order_items CASCADE;
 DROP TABLE IF EXISTS oltp.orders CASCADE;
 DROP TABLE IF EXISTS oltp.inventory_current CASCADE;
 DROP TABLE IF EXISTS oltp.products CASCADE;
+DROP TABLE IF EXISTS oltp.employees CASCADE;
 DROP TABLE IF EXISTS oltp.branches CASCADE;
 
 -- ==========================================
@@ -39,6 +41,7 @@ CREATE TABLE oltp.branches (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS trg_branches_updated_at ON oltp.branches;
 CREATE TRIGGER trg_branches_updated_at BEFORE UPDATE ON oltp.branches FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 CREATE TABLE oltp.products (
@@ -50,6 +53,7 @@ CREATE TABLE oltp.products (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS trg_products_updated_at ON oltp.products;
 CREATE TRIGGER trg_products_updated_at BEFORE UPDATE ON oltp.products FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 CREATE TABLE oltp.orders (
@@ -60,6 +64,7 @@ CREATE TABLE oltp.orders (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS trg_orders_updated_at ON oltp.orders;
 CREATE TRIGGER trg_orders_updated_at BEFORE UPDATE ON oltp.orders FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 CREATE TABLE oltp.order_items (
@@ -71,6 +76,7 @@ CREATE TABLE oltp.order_items (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS trg_order_items_updated_at ON oltp.order_items;
 CREATE TRIGGER trg_order_items_updated_at BEFORE UPDATE ON oltp.order_items FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 CREATE TABLE oltp.inventory_current (
@@ -82,6 +88,7 @@ CREATE TABLE oltp.inventory_current (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(branch_id, product_id)
 );
+DROP TRIGGER IF EXISTS trg_inventory_updated_at ON oltp.inventory_current;
 CREATE TRIGGER trg_inventory_updated_at BEFORE UPDATE ON oltp.inventory_current FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 CREATE TABLE oltp.inventory_logs (
@@ -93,6 +100,22 @@ CREATE TABLE oltp.inventory_logs (
     reason VARCHAR(50) NOT NULL CHECK (reason IN ('RESTOCK', 'CONSUMPTION', 'ADJUSTMENT')),
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE oltp.inventory (
+    id SERIAL PRIMARY KEY,
+    branch_id INT NOT NULL REFERENCES oltp.branches(id) ON DELETE CASCADE,
+    product_name VARCHAR(255) NOT NULL,
+    stock_quantity NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    unit VARCHAR(50),
+    reorder_level NUMERIC(10, 2),
+    expiry_date DATE,
+    batch_number VARCHAR(100),
+    ingredient_type VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+DROP TRIGGER IF EXISTS trg_inventory_main_updated_at ON oltp.inventory;
+CREATE TRIGGER trg_inventory_main_updated_at BEFORE UPDATE ON oltp.inventory FOR EACH ROW EXECUTE FUNCTION oltp.set_updated_at();
 
 -- ==========================================
 -- 2. OLAP SCHEMA (Star Schema for Analytics)
@@ -239,6 +262,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_audit_inventory ON oltp.inventory_current;
 CREATE TRIGGER trg_audit_inventory
 AFTER UPDATE ON oltp.inventory_current
 FOR EACH ROW
@@ -325,13 +349,13 @@ BEGIN
     -- Pick a weighted random branch
     SELECT id INTO v_branch_id FROM oltp.branches ORDER BY -LOG(RANDOM() + 0.000001) / traffic_weight LIMIT 1;
     -- Pick a weighted random product
-    SELECT id, base_price INTO v_product_id, v_unit_price FROM oltp.products ORDER BY -LOG(RANDOM() + 0.000001) / popularity_weight LIMIT 1;
+    SELECT id, COALESCE(base_price, 0) INTO v_product_id, v_unit_price FROM oltp.products ORDER BY -LOG(RANDOM() + 0.000001) / popularity_weight LIMIT 1;
     v_quantity := floor(random() * 3 + 1)::INT;
-    v_gross    := v_unit_price * v_quantity;
+    v_gross    := COALESCE(v_unit_price, 0) * v_quantity;
 
     -- Insert order
     INSERT INTO oltp.orders (branch_id, gross_amount, discount_amount, created_at)
-    VALUES (v_branch_id, v_gross, 0, NOW())
+    VALUES (v_branch_id, COALESCE(v_gross, 0), 0, NOW())
     RETURNING id INTO v_order_id;
 
     -- Insert order item

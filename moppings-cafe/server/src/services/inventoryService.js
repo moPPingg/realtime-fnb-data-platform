@@ -35,28 +35,47 @@ export async function updateStock(id, quantity, low_stock) {
 }
 
 export async function upsertInventory(store_id, product_id, quantity, low_stock = 10) {
-  const { rows } = await query(
+  await query(
     `INSERT INTO inventory (store_id, product_id, quantity, low_stock)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (store_id, product_id)
-     DO UPDATE SET quantity = $3, low_stock = $4, updated_at = NOW()
-     RETURNING id, store_id, product_id, quantity, low_stock, updated_at`,
+     DO UPDATE SET quantity = $3, low_stock = $4, updated_at = NOW()`,
     [store_id, product_id, quantity, low_stock]
+  );
+  
+  const { rows } = await query(
+    `SELECT i.id, i.quantity, i.low_stock, i.updated_at,
+            p.id AS product_id, p.name AS product, p.category, p.unit,
+            s.id AS store_id, s.name AS store, s.location
+     FROM inventory i
+     JOIN products p ON p.id = i.product_id
+     JOIN stores s ON s.id = i.store_id
+     WHERE i.store_id = $1 AND i.product_id = $2`,
+    [store_id, product_id]
   );
   return rows[0];
 }
 
-export async function getLowStock() {
-  const { rows } = await query(
-    `SELECT i.id, i.quantity, i.low_stock,
-            p.name AS product, p.category, p.unit,
-            s.name AS store
-     FROM inventory i
-     JOIN products p ON p.id = i.product_id
-     JOIN stores s ON s.id = i.store_id
-     WHERE i.quantity <= i.low_stock
-     ORDER BY (i.quantity::float / NULLIF(i.low_stock, 0)) ASC`
-  );
+export async function getLowStock(storeId) {
+  const sql = storeId
+    ? `SELECT i.id, i.quantity, i.low_stock,
+              p.name AS product, p.category, p.unit,
+              s.name AS store, s.id AS store_id
+       FROM inventory i
+       JOIN products p ON p.id = i.product_id
+       JOIN stores s ON s.id = i.store_id
+       WHERE i.store_id = $1 AND i.quantity <= i.low_stock
+       ORDER BY (i.quantity::float / NULLIF(i.low_stock, 0)) ASC`
+    : `SELECT i.id, i.quantity, i.low_stock,
+              p.name AS product, p.category, p.unit,
+              s.name AS store, s.id AS store_id
+       FROM inventory i
+       JOIN products p ON p.id = i.product_id
+       JOIN stores s ON s.id = i.store_id
+       WHERE i.quantity <= i.low_stock
+       ORDER BY (i.quantity::float / NULLIF(i.low_stock, 0)) ASC`;
+
+  const { rows } = storeId ? await query(sql, [storeId]) : await query(sql);
   return rows;
 }
 

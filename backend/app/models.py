@@ -51,6 +51,7 @@ class Employee(Base):
     role = Column(String)
     branch_id = Column(Integer)
     status = Column(String)
+    email = Column(String)
 
 class Branch(Base):
     __tablename__ = "branches"

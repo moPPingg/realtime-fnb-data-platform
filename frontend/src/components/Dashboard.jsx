@@ -1,10 +1,11 @@
 import React from 'react';
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie
 } from 'recharts';
 
-const COLORS = ['#2563eb', '#7c3aed', '#ec4899', '#ea580c', '#16a34a'];
+const COLORS = ['#6F4E37', '#8C7851', '#A69076', '#C2B280', '#E5D3B3'];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -34,10 +35,10 @@ export const KPICards = ({ data }) => {
   if (!data || Object.keys(data).length === 0) return null;
 
   const cards = [
-    { label: 'Revenue Today',      value: `$${(data.revenue_today || 0).toLocaleString()}`, trend: data.revenue_trend_pct, icon: '💰' },
-    { label: 'Orders Today',       value: (data.orders_today || 0).toLocaleString(), trend: null, icon: '🛍️' },
-    { label: 'Avg Order Value',    value: `$${(data.avg_order_value || 0).toFixed(2)}`, trend: null, icon: '📈' },
-    { label: 'Top Product',        value: data.top_product || 'N/A', trend: null, icon: '🏆' },
+    { label: 'Revenue Today',      value: `$${(data.revenue_today || 0).toLocaleString()}`, trend: data.revenue_trend_pct },
+    { label: 'Orders Today',       value: (data.orders_today || 0).toLocaleString(), trend: null },
+    { label: 'Avg Order Value',    value: `$${(data.avg_order_value || 0).toFixed(2)}`, trend: null },
+    { label: 'Top Product',        value: data.top_product || 'N/A', trend: null },
   ];
 
   return (
@@ -46,7 +47,6 @@ export const KPICards = ({ data }) => {
         <div key={i} className="kpi-card" id={`kpi-${i}`}>
           <div className="kpi-header">
             <div className="kpi-label">{card.label}</div>
-            <div className="kpi-icon">{card.icon}</div>
           </div>
           <div className="kpi-value">{card.value}</div>
           {card.trend !== null && card.trend !== undefined && (
@@ -73,24 +73,18 @@ export const RevenueByHourChart = ({ data }) => (
       {data?.length > 0 ? (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
-            <defs>
-              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#2563eb" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
+            <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-light)', fontSize: 11 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-light)', fontSize: 11 }} />
             <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2.5}
-              fill="url(#revenueGradient)" dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: '#2563eb', stroke: 'white', strokeWidth: 2 }}
+            <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2}
+              fill="var(--primary-bg)" dot={{ r: 3, fill: 'var(--primary)', strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: 'var(--primary)', stroke: 'white', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <div className="empty-state"><div className="emoji">📊</div>No hourly data for today yet</div>
+        <div className="empty-state">No hourly data available for the selected period.</div>
       )}
     </div>
   </div>
@@ -109,21 +103,21 @@ export const RevenueByDateChart = ({ data }) => (
       {data?.length > 0 ? (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
             <XAxis dataKey="date" axisLine={false} tickLine={false}
-              tick={{ fill: '#94a3b8', fontSize: 11 }}
+              tick={{ fill: 'var(--text-light)', fontSize: 11 }}
               tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth()+1}`; }}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-light)', fontSize: 11 }} />
             <Tooltip content={<CustomTooltip />} />
-            <Line type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={2.5}
-              dot={{ r: 3, fill: '#7c3aed', strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: '#7c3aed', stroke: 'white', strokeWidth: 2 }}
+            <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2}
+              dot={{ r: 3, fill: 'var(--primary)', strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: 'var(--primary)', stroke: 'white', strokeWidth: 2 }}
             />
           </LineChart>
         </ResponsiveContainer>
       ) : (
-        <div className="empty-state"><div className="emoji">📈</div>No historical data yet</div>
+        <div className="empty-state">No historical revenue data available.</div>
       )}
     </div>
   </div>
@@ -142,19 +136,19 @@ export const TopProductsChart = ({ data }) => (
       {data?.length > 0 ? (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border-light)" />
+            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-light)', fontSize: 11 }} />
             <YAxis dataKey="name" type="category" axisLine={false} tickLine={false}
-              tick={{ fill: '#334155', fontSize: 12, fontWeight: 500 }} width={110}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 500 }} width={110}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--bg-main)' }} />
             <Bar dataKey="units_sold" name="Units Sold" radius={[0, 6, 6, 0]} barSize={22}>
               {data?.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        <div className="empty-state"><div className="emoji">🍔</div>No product data yet</div>
+        <div className="empty-state">No product performance data available.</div>
       )}
     </div>
   </div>
@@ -183,7 +177,7 @@ export const ProductRankingTable = ({ data }) => (
               <td className="product-name">{p.name}</td>
               <td><span className="category-badge">{p.category}</span></td>
               <td style={{ textAlign: 'right', fontWeight: 600 }}>{p.units_sold?.toLocaleString()}</td>
-              <td style={{ textAlign: 'right', fontWeight: 600, color: '#059669' }}>
+              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--success)' }}>
                 ${p.revenue?.toLocaleString()}
               </td>
             </tr>
@@ -191,7 +185,7 @@ export const ProductRankingTable = ({ data }) => (
         </tbody>
       </table>
     ) : (
-      <div className="empty-state"><div className="emoji">📋</div>No ranking data</div>
+      <div className="empty-state">No ranking data available.</div>
     )}
   </div>
 );
@@ -210,26 +204,26 @@ export const BranchPerformanceChart = ({ data }) => {
       <div className="chart-header">
         <h3 className="chart-title">Branch Revenue Comparison</h3>
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
-          <span style={{ color: 'var(--success)', fontWeight: 700 }}>🏆 Best: {best.branch}</span>
-          <span style={{ color: 'var(--danger)', fontWeight: 700 }}>⚠ Worst: {worst.branch}</span>
+          <span style={{ color: 'var(--success)', fontWeight: 700 }}>Best: {best.branch}</span>
+          <span style={{ color: 'var(--danger)', fontWeight: 700 }}>Worst: {worst.branch}</span>
         </div>
       </div>
       <div style={{ height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barCategoryGap="25%">
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
             <XAxis dataKey="branch" axisLine={false} tickLine={false}
-              tick={{ fill: '#334155', fontSize: 11, fontWeight: 500 }}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 500 }}
               angle={-20} textAnchor="end" height={60}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-light)', fontSize: 11 }} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="revenue" name="Revenue" radius={[6, 6, 0, 0]} barSize={36}>
               {data.map((entry, i) => (
                 <Cell key={i}
-                  fill={entry.branch === best.branch ? '#10b981'
-                      : entry.branch === worst.branch ? '#ef4444'
-                      : '#7c3aed'}
+                  fill={entry.branch === best.branch ? 'var(--success)'
+                      : entry.branch === worst.branch ? 'var(--danger)'
+                      : 'var(--primary)'}
                 />
               ))}
             </Bar>
@@ -246,29 +240,36 @@ export const BranchPerformanceChart = ({ data }) => {
 export const InventoryAlerts = ({ alerts }) => (
   <div className="chart-container" style={{ marginBottom: '1.75rem' }}>
     <div className="chart-header">
-      <h3 className="chart-title">🚨 Inventory Alerts</h3>
-      <span className="chart-badge">{alerts?.length || 0} items</span>
+      <h3 className="chart-title">Inventory Health Alerts</h3>
+      <span className="chart-badge">{alerts?.length || 0} items requiring attention</span>
     </div>
     {!alerts || alerts.length === 0 ? (
       <div className="empty-state">
-        <div className="emoji">✅</div>All products are sufficiently stocked
+        All products are sufficiently stocked. No action required.
       </div>
     ) : (
       <div>
         {alerts.map((alert, i) => (
           <div key={i} className="alert-item" style={{
-            backgroundColor: alert.severity === 'critical' ? '#fef2f2' : '#fffbeb',
-            border: `1px solid ${alert.severity === 'critical' ? '#fecaca' : '#fde68a'}`,
+            backgroundColor: alert.severity === 'critical' ? 'var(--danger-bg)' : 'var(--warning-bg)',
+            border: `1px solid ${alert.severity === 'critical' ? 'var(--danger)' : 'var(--warning)'}`,
           }}>
             <div className="alert-info">
-              <span className="alert-icon">{alert.severity === 'critical' ? '🔴' : '🟡'}</span>
               <div>
                 <div className="alert-product" style={{
-                  color: alert.severity === 'critical' ? '#991b1b' : '#92400e'
+                  color: alert.severity === 'critical' ? 'var(--danger)' : 'var(--warning)'
                 }}>
                   {alert.product}
                 </div>
-                <div className="alert-detail">{alert.branch} · {alert.category}</div>
+                <div className="alert-detail">
+                  {alert.branch} · {alert.category}
+                  {alert.expiry_date && (
+                    <span style={{ marginLeft: '8px', color: alert.severity === 'critical' ? 'var(--danger)' : 'var(--text-light)', fontWeight: 600 }}>
+                       · HSD: {alert.expiry_date}
+                    </span>
+                  )}
+                  {alert.batch && <span style={{ marginLeft: '8px', opacity: 0.7 }}>· Lô: {alert.batch}</span>}
+                </div>
               </div>
             </div>
             <div className="alert-right">
@@ -295,15 +296,49 @@ export const InsightBox = ({ insights }) => {
   return (
     <div className="insight-box">
       <div className="insight-title">
-        <span>💡</span> AI Business Insights
+        Performance Insights
       </div>
       <div className="insight-list">
         {insights.map((insight, i) => (
           <div key={i} className="insight-item">
-            <span className="insight-icon">{insight.icon}</span>
             <span>{insight.text}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────
+// REVENUE DISTRIBUTION — Pie Chart
+// ─────────────────────────────────────────────────────
+export const RevenueDistributionChart = ({ data }) => {
+  if (!data || data.length === 0) return null;
+  
+  return (
+    <div className="chart-container">
+      <div className="chart-header">
+        <h3 className="chart-title">Revenue Distribution</h3>
+        <span className="chart-badge">By Branch</span>
+      </div>
+      <div style={{ height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              innerRadius={60}
+              outerRadius={80}
+              paddingAngle={5}
+              dataKey="revenue"
+              nameKey="branch"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

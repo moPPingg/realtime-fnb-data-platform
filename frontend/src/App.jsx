@@ -3,15 +3,48 @@ import { Sidebar, Topbar } from './components/Layout';
 import {
   KPICards, RevenueByHourChart, RevenueByDateChart,
   TopProductsChart, ProductRankingTable, BranchPerformanceChart,
-  InventoryAlerts, InsightBox
+  InventoryAlerts, InsightBox, RevenueDistributionChart
 } from './components/Dashboard';
 import { supabase } from './utils/supabaseClient';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+import Login from './components/Login';
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 function App() {
-  // ── State ──────────────────────────────────────────
-  const [role, setRole] = useState('MANAGER');
+  // ── Auth ───────────────────────────────────────────
+  const [session, setSession] = useState(null);
+  const [role, setRole] = useState('STAFF');
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const updateRole = async (sess) => {
+      if (sess?.user?.email) {
+        try {
+          const res = await fetch(`${API_BASE}/api/user/role?email=${sess.user.email}`);
+          const data = await res.json();
+          setRole(data.role || 'STAFF');
+        } catch (err) {
+          setRole('STAFF');
+        }
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) updateRole(session);
+      setLoadingAuth(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) updateRole(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Dashboard State ────────────────────────────────
   const [selectedBranch, setSelectedBranch] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -28,71 +61,65 @@ function App() {
   // ── Fetch ──────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
       const bp = selectedBranch ? `?branch_id=${selectedBranch}` : '';
+      
+      console.log(`[Dashboard] Initiating fetch for branch: ${selectedBranch || 'All'}`);
 
       const [kpi, hour, dateR, prod, branch, alert, insight, brList] = await Promise.all([
-        fetch(`${API_BASE}/api/dashboard/kpi${bp}`),
-        fetch(`${API_BASE}/api/dashboard/revenue-by-hour${bp}`),
-        fetch(`${API_BASE}/api/dashboard/revenue-by-date${bp}`),
-        fetch(`${API_BASE}/api/dashboard/top-products${bp}`),
-        fetch(`${API_BASE}/api/dashboard/branch-performance`),
-        fetch(`${API_BASE}/api/dashboard/low-stock${bp}`),
-        fetch(`${API_BASE}/api/dashboard/insights`),
-        fetch(`${API_BASE}/api/branches`),
+        fetch(`${API_BASE}/api/dashboard/kpi${bp}`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/revenue-by-hour${bp}`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/revenue-by-date${bp}`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/top-products${bp}`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/branch-performance`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/low-stock${bp}`).then(r => r.json()),
+        fetch(`${API_BASE}/api/dashboard/insights`).then(r => r.json()),
+        fetch(`${API_BASE}/api/branches`).then(r => r.json()),
       ]);
 
-      setKpiData(await kpi.json());
-      setRevenueByHour(await hour.json());
-      setRevenueByDate(await dateR.json());
-      setTopProducts(await prod.json());
-      setBranchPerformance(await branch.json());
-      setInventoryAlerts(await alert.json());
-      setInsights(await insight.json());
-      setBranches(await brList.json());
-      setLoading(false);
+      console.log('[Dashboard] Data received:', { 
+        kpi: !!kpi, 
+        hour: hour?.length, 
+        prod: prod?.length, 
+        branches: brList?.length 
+      });
+
+      if (kpi) setKpiData(kpi);
+      if (hour) setRevenueByHour(hour);
+      if (dateR) setRevenueByDate(dateR);
+      if (prod) setTopProducts(prod);
+      if (branch) setBranchPerformance(branch);
+      if (alert) setInventoryAlerts(alert);
+      if (insight) setInsights(insight);
+      if (brList) setBranches(brList);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
+      alert('Failed to load dashboard data. Please check your connection or backend status.');
+    } finally {
       setLoading(false);
     }
   }, [selectedBranch]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // ── Supabase Realtime ──────────────────────────────
   useEffect(() => {
-    const orderChannel = supabase
-      .channel('realtime:orders')
-      .on('postgres_changes', { event: 'INSERT', schema: 'oltp', table: 'orders' }, () => {
-        console.log('[Realtime] New order → refreshing dashboard');
-        fetchData();
-      })
-      .subscribe();
-
-    const inventoryChannel = supabase
-      .channel('realtime:inventory')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'oltp', table: 'inventory_current' }, () => {
-        console.log('[Realtime] Inventory changed → refreshing alerts');
-        const bp = selectedBranch ? `?branch_id=${selectedBranch}` : '';
-        fetch(`${API_BASE}/api/dashboard/low-stock${bp}`)
-          .then(r => r.json())
-          .then(d => setInventoryAlerts(d));
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(orderChannel);
-      supabase.removeChannel(inventoryChannel);
-    };
-  }, [fetchData, selectedBranch]);
+    if (session) {
+      fetchData();
+    }
+  }, [fetchData, session]);
 
   // ── Loading ────────────────────────────────────────
-  if (loading) {
+  if (loadingAuth || (session && loading)) {
     return (
       <div className="loading-screen">
         <div className="loading-spinner" />
-        <div className="loading-text">Connecting to real-time analytics…</div>
+        <div className="loading-text">
+          {loadingAuth ? 'Verifying access...' : 'Loading Dashboard...'}
+        </div>
       </div>
     );
+  }
+
+  if (!session) {
+    return <Login />;
   }
 
   // ── Helpers ────────────────────────────────────────
@@ -120,15 +147,19 @@ function App() {
             <div className="filter-bar">
               {role === 'MANAGER' && (
                 <select
-                  id="filter-branch"
-                  className="filter-select"
+                  id="branch-selector"
+                  className="branch-select"
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
                 >
                   <option value="">All Branches</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
+                  {branches.length > 0 ? (
+                    branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))
+                  ) : (
+                    <option disabled>Loading branches...</option>
+                  )}
                 </select>
               )}
               <select id="filter-period" className="filter-select">
@@ -150,12 +181,11 @@ function App() {
               <KPICards data={kpiData} />
               <div className="charts-grid">
                 <RevenueByHourChart data={revenueByHour} />
-                <TopProductsChart data={topProducts} />
+                <RevenueDistributionChart data={branchPerformance} />
               </div>
+              <TopProductsChart data={topProducts} />
               {role === 'MANAGER' && !selectedBranch && (
-                <div className="charts-grid">
-                  <BranchPerformanceChart data={branchPerformance} />
-                </div>
+                <BranchPerformanceChart data={branchPerformance} />
               )}
               <InventoryAlerts alerts={inventoryAlerts} />
             </>
@@ -168,6 +198,10 @@ function App() {
               <div className="charts-grid">
                 <RevenueByHourChart data={revenueByHour} />
                 <RevenueByDateChart data={revenueByDate} />
+              </div>
+              <div className="charts-grid">
+                 <RevenueDistributionChart data={branchPerformance} />
+                 {role === 'MANAGER' && <BranchPerformanceChart data={branchPerformance} />}
               </div>
             </>
           )}
@@ -182,66 +216,15 @@ function App() {
 
           {/* ── INVENTORY TAB ── */}
           {activeTab === 'inventory' && (
-            <InventoryAlerts alerts={inventoryAlerts} />
-          )}
-
-          {/* ── BRANCHES TAB (Manager only) ── */}
-          {activeTab === 'branches' && role === 'MANAGER' && (
-            <div className="charts-grid">
-              <BranchPerformanceChart data={branchPerformance} />
+            <div style={{ maxWidth: '800px' }}>
+              <InventoryAlerts alerts={inventoryAlerts} />
+              <div className="empty-state" style={{ marginTop: '2rem' }}>
+                Full inventory management module coming soon.
+              </div>
             </div>
-          )}
-
-          {/* ── DATA QUALITY TAB ── */}
-          {activeTab === 'quality' && role === 'MANAGER' && (
-            <DataQualityPanel />
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-// ── Inline Data Quality Panel ────────────────────────
-function DataQualityPanel() {
-  const [checks, setChecks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/system/data-quality`)
-      .then(r => r.json())
-      .then(d => { setChecks(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="loading-text" style={{ padding: '2rem' }}>Running checks…</div>;
-
-  return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <h3 className="chart-title">Data Quality Checks</h3>
-      </div>
-      <table className="product-table">
-        <thead>
-          <tr><th>Check</th><th>Status</th><th>Details</th></tr>
-        </thead>
-        <tbody>
-          {checks.map((c, i) => (
-            <tr key={i}>
-              <td className="product-name">{c.check_name}</td>
-              <td>
-                <span className="category-badge" style={{
-                  background: c.status === 'PASSED' ? 'var(--success-bg)' : 'var(--danger-bg)',
-                  color: c.status === 'PASSED' ? '#059669' : '#dc2626',
-                }}>
-                  {c.status}
-                </span>
-              </td>
-              <td>{c.details}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

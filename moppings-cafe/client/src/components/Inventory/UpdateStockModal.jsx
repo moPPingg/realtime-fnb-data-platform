@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import api from '../../api/axios';
 import { X, Loader2, Save } from 'lucide-react';
+import { useToast } from '../../components/Toast';
 
 const UpdateStockModal = ({ item, onClose }) => {
   const [quantity, setQuantity] = useState(item.quantity);
   const [lowStock, setLowStock] = useState(item.low_stock);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,9 +19,12 @@ const UpdateStockModal = ({ item, onClose }) => {
         quantity: parseInt(quantity),
         low_stock: parseInt(lowStock)
       });
+      toast.success('Stock updated successfully');
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update inventory');
+      const message = err.response?.data?.error || 'Failed to update inventory';
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

@@ -7,7 +7,8 @@ import {
   Users, 
   ShieldCheck, 
   Coffee,
-  LogOut 
+  LogOut,
+  History
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -16,6 +17,7 @@ const Sidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
     { name: 'Inventory', path: '/inventory', icon: Package, permission: 'manage_inventory' },
+    { name: 'History', path: '/transactions', icon: History, permission: 'view_dashboard' },
     { name: 'Users', path: '/users', icon: Users, permission: 'manage_users' },
     { name: 'Roles', path: '/roles', icon: ShieldCheck, permission: 'manage_users' },
   ];

@@ -1,3 +1,4 @@
+name: moppings-cafe
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0

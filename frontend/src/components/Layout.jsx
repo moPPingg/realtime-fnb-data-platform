@@ -2,15 +2,15 @@ import React from 'react';
 
 export const Sidebar = ({ activeTab, setActiveTab, role }) => {
   const mainNav = [
-    { id: 'overview',  label: 'Overview',  icon: '📊' },
-    { id: 'revenue',   label: 'Revenue',   icon: '💰' },
-    { id: 'products',  label: 'Products',  icon: '🍔' },
-    { id: 'inventory', label: 'Inventory', icon: '📦' },
+    { id: 'overview',  label: 'Overview' },
+    { id: 'revenue',   label: 'Revenue' },
+    { id: 'products',  label: 'Products' },
+    { id: 'inventory', label: 'Inventory' },
   ];
 
   const managerNav = [
-    { id: 'branches', label: 'Branches', icon: '🏢' },
-    { id: 'quality',  label: 'Data Quality', icon: '✅' },
+    { id: 'branches', label: 'Branches' },
+    { id: 'quality',  label: 'Data Quality' },
   ];
 
   return (
@@ -29,7 +29,6 @@ export const Sidebar = ({ activeTab, setActiveTab, role }) => {
             className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
             onClick={() => setActiveTab(item.id)}
           >
-            <span className="nav-icon">{item.icon}</span>
             {item.label}
           </div>
         ))}
@@ -44,7 +43,6 @@ export const Sidebar = ({ activeTab, setActiveTab, role }) => {
                 className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(item.id)}
               >
-                <span className="nav-icon">{item.icon}</span>
                 {item.label}
               </div>
             ))}
@@ -53,8 +51,8 @@ export const Sidebar = ({ activeTab, setActiveTab, role }) => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="nav-item" style={{ color: 'var(--danger)' }}>
-          <span className="nav-icon">🚪</span> Logout
+        <div className="nav-item" style={{ color: 'var(--danger)' }} onClick={() => import('../utils/supabaseClient').then(m => m.supabase.auth.signOut())}>
+          Logout
         </div>
       </div>
     </aside>
